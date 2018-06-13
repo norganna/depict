@@ -4,15 +4,17 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+	"time"
 )
 
 // Design represents a depiction configuration.
 type Design struct {
-	maxDepth   int
-	showString bool
-	onlyError  bool
-	hideError  bool
-	ignoreJson bool
+	maxDepth    int
+	showString  bool
+	onlyError   bool
+	hideError   bool
+	ignoreJson  bool
+	ignoreKnown bool
 
 	inclusion      bool
 	inclusionPaths map[string]bool
@@ -54,27 +56,13 @@ func (d *Design) doInterface(a interface{}, path string, inclusion bool, depth i
 	depth++
 
 	val := reflect.ValueOf(a)
-	if val.Kind() == reflect.Ptr {
-		val = reflect.Indirect(val)
-	}
-
 	vk := val.Kind()
-	switch vk {
-	case reflect.Struct:
-		return d.doStruct(val, path, inclusion, depth)
-
-	case reflect.Map:
-		return d.doMap(val, path, inclusion, depth)
-
-	case reflect.Slice:
-		if val.IsNil() {
-			return nil, inclusion
-		}
-		fallthrough
-	case reflect.Array:
-		return d.doArray(val, path, inclusion, depth)
+	for vk == reflect.Ptr {
+		val = reflect.Indirect(val)
+		vk = val.Kind()
 	}
-	return d.doStatic(vk, val, path, inclusion, depth)
+
+	return d.doChoose(vk, val, path, inclusion, depth)
 }
 
 func (d *Design) doStruct(val reflect.Value, path string, inclusion bool, depth int) (ret interface{}, included bool) {
@@ -82,6 +70,38 @@ func (d *Design) doStruct(val reflect.Value, path string, inclusion bool, depth 
 		return Extent("{...}"), inclusion
 	}
 	depth++
+
+	vk := val.Kind()
+	for vk == reflect.Ptr {
+		val = reflect.Indirect(val)
+		vk = val.Kind()
+	}
+
+	if !d.ignoreKnown && vk != reflect.Invalid {
+		t := val.Type()
+		switch {
+		case t == reflect.TypeOf(time.Time{}):
+			wall := val.FieldByName("wall").Uint()
+			ext := val.FieldByName("ext").Int()
+			location := val.FieldByName("loc")
+			locName := reflect.Indirect(location).FieldByName("name").String()
+
+			var secs int64
+			if wall&(1<<63) != 0 {
+				secs = int64(wall<<1>>31) - 2682288000
+			} else {
+				secs = ext
+			}
+			nanos := int64(int32(wall & (1<<30 - 1)))
+
+			ts := time.Unix(secs, nanos)
+			if loc, err := time.LoadLocation(locName); err == nil {
+				ts.In(loc)
+			}
+			return ts.Format("2006-01-02T15:04:05.000-0700"), inclusion
+		}
+
+	}
 
 	s := map[string]interface{}{}
 	ret = s
@@ -115,14 +135,19 @@ func (d *Design) doStruct(val reflect.Value, path string, inclusion bool, depth 
 			subInclusion = include
 		}
 
-		if f.CanInterface() {
-			r, inc := d.doInterface(f.Interface(), subPath, subInclusion, depth)
-			if inc {
-				s[name] = r
+		fk := f.Kind()
+		for fk == reflect.Ptr {
+			f = reflect.Indirect(f)
+			fk = f.Kind()
+		}
+
+		if fk == reflect.Invalid {
+			if subInclusion {
+				s[name] = nil
 				included = true
 			}
 		} else {
-			r, inc := d.doStatic(f.Kind(), f, subPath, subInclusion, depth)
+			r, inc := d.doChoose(fk, f, subPath, subInclusion, depth)
 			if inc {
 				s[name] = r
 				included = true
@@ -137,6 +162,12 @@ func (d *Design) doMap(val reflect.Value, path string, inclusion bool, depth int
 		return Extent("{...}"), inclusion
 	}
 	depth++
+
+	vk := val.Kind()
+	for vk == reflect.Ptr {
+		val = reflect.Indirect(val)
+		vk = val.Kind()
+	}
 
 	s := map[string]interface{}{}
 	ret = s
@@ -159,14 +190,19 @@ func (d *Design) doMap(val reflect.Value, path string, inclusion bool, depth int
 			subInclusion = include
 		}
 
-		if f.CanInterface() {
-			r, inc := d.doInterface(f.Interface(), subPath, subInclusion, depth)
-			if inc {
-				s[name] = r
+		fk := f.Kind()
+		for fk == reflect.Ptr {
+			f = reflect.Indirect(f)
+			fk = f.Kind()
+		}
+
+		if fk == reflect.Invalid {
+			if subInclusion {
+				s[name] = nil
 				included = true
 			}
 		} else {
-			r, inc := d.doStatic(f.Kind(), f, subPath, subInclusion, depth)
+			r, inc := d.doChoose(fk, f, subPath, subInclusion, depth)
 			if inc {
 				s[name] = r
 				included = true
@@ -182,6 +218,12 @@ func (d *Design) doArray(val reflect.Value, path string, inclusion bool, depth i
 	}
 	depth++
 
+	vk := val.Kind()
+	for vk == reflect.Ptr {
+		val = reflect.Indirect(val)
+		vk = val.Kind()
+	}
+
 	included = inclusion
 
 	n := val.Len()
@@ -196,14 +238,19 @@ func (d *Design) doArray(val reflect.Value, path string, inclusion bool, depth i
 			subInclusion = include
 		}
 
-		if f.CanInterface() {
-			r, inc := d.doInterface(f.Interface(), subPath, subInclusion, depth)
-			if inc {
-				a = append(a, r)
+		fk := f.Kind()
+		for fk == reflect.Ptr {
+			f = reflect.Indirect(f)
+			fk = f.Kind()
+		}
+
+		if fk == reflect.Invalid {
+			if subInclusion {
+				a = append(a, nil)
 				included = true
 			}
 		} else {
-			r, inc := d.doStatic(f.Kind(), f, subPath, subInclusion, depth)
+			r, inc := d.doChoose(fk, f, subPath, subInclusion, depth)
 			if inc {
 				a = append(a, r)
 				included = true
@@ -215,12 +262,35 @@ func (d *Design) doArray(val reflect.Value, path string, inclusion bool, depth i
 	return
 }
 
-func (d *Design) doStatic(vk reflect.Kind, val reflect.Value, path string, inclusion bool, depth int) (ret interface{}, included bool) {
+func (d *Design) doChoose(vk reflect.Kind, val reflect.Value, path string, inclusion bool, depth int) (ret interface{}, included bool) {
 	if depth > d.maxDepth {
 		return Extent("..."), inclusion
 	}
 
+	for vk == reflect.Ptr {
+		val = reflect.Indirect(val)
+		vk = val.Kind()
+	}
+
+	if vk == reflect.Interface {
+		return d.doInterface(val.Interface(), path, inclusion, depth)
+	}
+
 	switch vk {
+	case reflect.Struct:
+		return d.doStruct(val, path, inclusion, depth)
+
+	case reflect.Map:
+		return d.doMap(val, path, inclusion, depth)
+
+	case reflect.Slice:
+		if val.IsNil() {
+			return nil, inclusion
+		}
+		fallthrough
+	case reflect.Array:
+		return d.doArray(val, path, inclusion, depth)
+
 	case reflect.Bool:
 		if val.Bool() {
 			return true, inclusion
@@ -244,16 +314,11 @@ func (d *Design) doStatic(vk reflect.Kind, val reflect.Value, path string, inclu
 
 	case reflect.Invalid:
 		return nil, inclusion
-
-	case reflect.Ptr, reflect.Uintptr, reflect.UnsafePointer, reflect.Chan, reflect.Func:
-		return Extent("#pointer: " + val.String()), inclusion
 	}
 
-	if val.IsNil() {
-		return nil, inclusion
+	vs := val.String()
+	if len(vs) > 2 && vs[0] == '<' {
+		vs = vs[1 : len(vs)-1]
 	}
-	if val.CanInterface() {
-		return val.Interface(), inclusion
-	}
-	return Extent("#other: " + val.String()), inclusion
+	return Extent("#" + vs), inclusion
 }

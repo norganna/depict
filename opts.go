@@ -38,6 +38,13 @@ func IgnoreJsonTag() Opt {
 	}
 }
 
+// IgnoreKnown stops depict from resolving things like time.Time etc to their formatted selves.
+func IgnoreKnown() Opt {
+	return func(d *Design) {
+		d.ignoreKnown = true
+	}
+}
+
 // Include restricts fields to only those specified.
 // A path looks like "foo[1].bar", which would match only the `bar` field in the second item in th `foo` field of your item.
 // E.g. the following would include the bar = "two" item:

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"testing"
+	"time"
 )
 
 func testStruct() interface{} {
@@ -189,8 +190,46 @@ func TestInclusion_5(t *testing.T) {
 }
 
 func TestNilInterface_1(t *testing.T) {
-	got := dump(Portray((*struct{a int})(nil)))
+	got := dump(Portray((*struct{ a int })(nil)))
 	expect := `null`
+
+	if got != expect {
+		t.Errorf("output unexpected, expected %s, got %s", expect, got)
+	}
+}
+
+type B struct {
+	c int
+}
+type A struct {
+	b *B
+}
+
+func TestNilInterface_2(t *testing.T) {
+	a := A{
+		b: nil,
+	}
+
+	got := dump(Portray(a))
+	expect := `{"b":null}`
+
+	if got != expect {
+		t.Errorf("output unexpected, expected %s, got %s", expect, got)
+	}
+}
+
+func TestTime_1(t *testing.T) {
+	now := time.Now()
+	nowText := now.Format("2006-01-02T15:04:05.000-0700")
+
+	a := &struct {
+		t time.Time
+	}{
+		t: now,
+	}
+
+	got := dump(Portray(a))
+	expect := `{"t":"` + nowText + `"}`
 
 	if got != expect {
 		t.Errorf("output unexpected, expected %s, got %s", expect, got)
