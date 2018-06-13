@@ -243,7 +243,7 @@ func (d *Design) doStatic(vk reflect.Kind, val reflect.Value, path string, inclu
 		return val.String(), inclusion
 
 	case reflect.Invalid:
-		return Extent("#invalid: " + val.String()), inclusion
+		return nil, inclusion
 
 	case reflect.Ptr, reflect.Uintptr, reflect.UnsafePointer, reflect.Chan, reflect.Func:
 		return Extent("#pointer: " + val.String()), inclusion

@@ -187,3 +187,12 @@ func TestInclusion_5(t *testing.T) {
 		t.Errorf("output unexpected, expected %s, got %s", expect, got)
 	}
 }
+
+func TestNilInterface_1(t *testing.T) {
+	got := dump(Portray((*struct{a int})(nil)))
+	expect := `null`
+
+	if got != expect {
+		t.Errorf("output unexpected, expected %s, got %s", expect, got)
+	}
+}
