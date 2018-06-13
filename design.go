@@ -4,7 +4,8 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
-	"time"
+
+	"github.com/norganna/depict/clone"
 )
 
 // Design represents a depiction configuration.
@@ -80,24 +81,8 @@ func (d *Design) doStruct(val reflect.Value, path string, inclusion bool, depth 
 	if !d.ignoreKnown && vk != reflect.Invalid {
 		t := val.Type()
 		switch {
-		case t == reflect.TypeOf(time.Time{}):
-			wall := val.FieldByName("wall").Uint()
-			ext := val.FieldByName("ext").Int()
-			location := val.FieldByName("loc")
-			locName := reflect.Indirect(location).FieldByName("name").String()
-
-			var secs int64
-			if wall&(1<<63) != 0 {
-				secs = int64(wall<<1>>31) - 2682288000
-			} else {
-				secs = ext
-			}
-			nanos := int64(int32(wall & (1<<30 - 1)))
-
-			ts := time.Unix(secs, nanos)
-			if loc, err := time.LoadLocation(locName); err == nil {
-				ts.In(loc)
-			}
+		case clone.IsTime(t):
+			ts := clone.Time(val)
 			return ts.Format("2006-01-02T15:04:05.000-0700"), inclusion
 		}
 
