@@ -2,23 +2,20 @@
 package depict
 
 import (
-	"fmt"
-	"reflect"
-	"strings"
+		"reflect"
 )
 
 const (
+	// MaxDepth is to prevent deep recursion.
 	MaxDepth = 10
 )
 
 // Interpret will, when given an interface, return a structure with private fields exported.
 func Interpret(a interface{}) interface{} {
-	fmt.Printf("Interpret: %#v", a)
 	return interpretInterface(a, 1)
 }
 
 func interpretInterface(a interface{}, depth int) interface{} {
-	fmt.Println(strings.Repeat("  ", depth), "iface")
 	if depth > MaxDepth {
 		return "..."
 	}
@@ -46,7 +43,6 @@ func interpretInterface(a interface{}, depth int) interface{} {
 }
 
 func interpretStruct(val reflect.Value, depth int) (ret interface{}) {
-	fmt.Println(strings.Repeat("  ", depth), "struct")
 	if depth > MaxDepth {
 		return "{...}"
 	}
@@ -60,8 +56,6 @@ func interpretStruct(val reflect.Value, depth int) (ret interface{}) {
 	n := vt.NumField()
 	for i := 0; i < n; i++ {
 		ft := vt.Field(i)
-		fmt.Println(strings.Repeat("  ", depth), "->", ft.Name)
-
 		f := val.Field(i)
 		if f.CanInterface() {
 			s[ft.Name] = interpretInterface(f.Interface(), depth)
@@ -74,7 +68,6 @@ func interpretStruct(val reflect.Value, depth int) (ret interface{}) {
 }
 
 func interpretArray(val reflect.Value, depth int) (ret interface{}) {
-	fmt.Println(strings.Repeat("  ", depth), "array")
 	if depth > MaxDepth {
 		return "[...]"
 	}
@@ -85,8 +78,7 @@ func interpretArray(val reflect.Value, depth int) (ret interface{}) {
 	ret = a
 
 	for i := 0; i < n; i++ {
-		fmt.Println(strings.Repeat("  ", depth), "[]", i)
-		f := val.Index(int(i))
+		f := val.Index(i)
 		if f.CanInterface() {
 			a[i] = interpretInterface(f.Interface(), depth)
 		} else {
@@ -97,11 +89,9 @@ func interpretArray(val reflect.Value, depth int) (ret interface{}) {
 }
 
 func interpretStatic(vk reflect.Kind, val reflect.Value, depth int) interface{} {
-	fmt.Println(strings.Repeat("  ", depth), "value")
 	if depth > MaxDepth {
 		return "..."
 	}
-	depth++
 
 	switch vk {
 	case reflect.Bool:
@@ -126,10 +116,10 @@ func interpretStatic(vk reflect.Kind, val reflect.Value, depth int) interface{} 
 		return val.String()
 
 	case reflect.Invalid:
-		return "#invalid: "+val.String()
+		return "#invalid: " + val.String()
 
 	case reflect.Ptr, reflect.Uintptr, reflect.UnsafePointer, reflect.Chan, reflect.Func:
-		return "#pointer: "+val.String()
+		return "#pointer: " + val.String()
 	}
 
 	if val.IsNil() {
@@ -138,5 +128,5 @@ func interpretStatic(vk reflect.Kind, val reflect.Value, depth int) interface{} 
 	if val.CanInterface() {
 		return val.Interface()
 	}
-	return fmt.Sprintf("%v", val.String())
+	return val.String()
 }
