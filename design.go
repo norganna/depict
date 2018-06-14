@@ -82,8 +82,7 @@ func (d *Design) doStruct(val reflect.Value, path string, inclusion bool, depth 
 		t := val.Type()
 		switch {
 		case clone.IsTime(t):
-			ts := clone.Time(val)
-			return ts.Format("2006-01-02T15:04:05.000Z07:00"), inclusion
+			return clone.Time(val), inclusion
 		}
 
 	}

@@ -17,6 +17,16 @@ func (e *Extent) MarshalJSON() ([]byte, error) {
 	return json.Marshal(e.Text)
 }
 
+// MarshalBinary allows us to be binary marshaled.
+func (e *Extent) MarshalBinary() ([]byte, error) {
+	return e.MarshalText()
+}
+
+// MarshalText allows us to be text marshaled.
+func (e *Extent) MarshalText() ([]byte, error) {
+	return []byte(e.Text), nil
+}
+
 // GobEncode allows us to be gob encoded.
 func (e *Extent) GobEncode() ([]byte, error) {
 	return EncodeToGob(e.Text)
