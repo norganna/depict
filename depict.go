@@ -6,9 +6,6 @@ const (
 	DefaultMaxDepth = 10
 )
 
-// Extent type denotes a string value that is returned which isn't really a string in the original structure.
-type Extent string
-
 var defaultDesign = New()
 
 // New returns a new `Design` based on the configured options, from which you can call `Portray` to create a

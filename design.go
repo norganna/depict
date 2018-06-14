@@ -36,12 +36,12 @@ func (d *Design) Portray(a interface{}) *Depiction {
 		if d.onlyError {
 			ret = v.Error()
 		} else if m, ok := ret.(map[string]interface{}); ok && !d.hideError {
-			m["(error)"] = Extent(v.Error())
+			m["(error)"] = &Extent{v.Error()}
 		}
 	}
 	if v, ok := a.(fmt.Stringer); ok && d.showString {
 		if m, ok := ret.(map[string]interface{}); ok {
-			m["(string)"] = Extent(v.String())
+			m["(string)"] = &Extent{v.String()}
 		}
 	}
 
@@ -52,7 +52,7 @@ func (d *Design) Portray(a interface{}) *Depiction {
 
 func (d *Design) doInterface(a interface{}, path string, inclusion bool, depth int) (ret interface{}, included bool) {
 	if depth > d.maxDepth {
-		return Extent("..."), inclusion
+		return &Extent{"..."}, inclusion
 	}
 	depth++
 
@@ -68,7 +68,7 @@ func (d *Design) doInterface(a interface{}, path string, inclusion bool, depth i
 
 func (d *Design) doStruct(val reflect.Value, path string, inclusion bool, depth int) (ret interface{}, included bool) {
 	if depth > d.maxDepth {
-		return Extent("{...}"), inclusion
+		return &Extent{"{...}"}, inclusion
 	}
 	depth++
 
@@ -144,7 +144,7 @@ func (d *Design) doStruct(val reflect.Value, path string, inclusion bool, depth 
 
 func (d *Design) doMap(val reflect.Value, path string, inclusion bool, depth int) (ret interface{}, included bool) {
 	if depth > d.maxDepth {
-		return Extent("{...}"), inclusion
+		return &Extent{"{...}"}, inclusion
 	}
 	depth++
 
@@ -199,7 +199,7 @@ func (d *Design) doMap(val reflect.Value, path string, inclusion bool, depth int
 
 func (d *Design) doArray(val reflect.Value, path string, inclusion bool, depth int) (ret interface{}, included bool) {
 	if depth > d.maxDepth {
-		return Extent("[...]"), inclusion
+		return &Extent{"[...]"}, inclusion
 	}
 	depth++
 
@@ -249,7 +249,7 @@ func (d *Design) doArray(val reflect.Value, path string, inclusion bool, depth i
 
 func (d *Design) doChoose(vk reflect.Kind, val reflect.Value, path string, inclusion bool, depth int) (ret interface{}, included bool) {
 	if depth > d.maxDepth {
-		return Extent("..."), inclusion
+		return &Extent{"..."}, inclusion
 	}
 
 	for vk == reflect.Ptr {
@@ -305,5 +305,5 @@ func (d *Design) doChoose(vk reflect.Kind, val reflect.Value, path string, inclu
 	if len(vs) > 2 && vs[0] == '<' {
 		vs = vs[1 : len(vs)-1]
 	}
-	return Extent("#" + vs), inclusion
+	return &Extent{"#" + vs}, inclusion
 }
