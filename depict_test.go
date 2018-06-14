@@ -220,7 +220,7 @@ func TestNilInterface_2(t *testing.T) {
 
 func TestTime_1(t *testing.T) {
 	now := time.Now()
-	nowText := now.Format("2006-01-02T15:04:05.000-0700")
+	nowText := now.Format("2006-01-02T15:04:05.000Z07:00")
 
 	a := &struct {
 		t time.Time
